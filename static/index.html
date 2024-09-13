@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Расписание СПбГЭУ</title>
+   <link rel="shortcut icon" type="image/x-icon" href="img/Unecon_Logo.jpg" />
+   <link href="bootstrap-5.3.3/css/bootstrap.min.css" rel="stylesheet">
+   <link href="style.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container main-block" style="max-width: 1600px; height: 100%;">
+   <div class="d-flex p-3 align-items-center justify-content-between">
+      <div class="p-3" id="logo">
+         <a href="index.html"><img src="img/logo.png"></a>
+      </div>
+
+      <span class="text-end fs-5" style="color: #0B888E;"><span class="badge bg-success">Студент</span><br><br><b id="NS"></b></span>
+   </div>
+
+   <hr id="main-hr">
+
+   <div class="mt-3 p-3" style="width: 100%;">
+
+      <h2>Расписание группы <span id="ads" class="badge bg-success"></span></h2>
+      <br>
+      <br>
+
+      <div class="calendar">
+         <button id="prevWeek"><<</button>
+         <div id="weekDisplay"></div>
+         <button id="nextWeek">>></button>
+      </div>
+      <br>
+      <div class="d-flex px-3 align-items-center text-white" style="background-color: #883f00; height: 50px; border-top-left-radius: 5px; border-top-right-radius: 5px; width: min-content;">
+         <div class="px-2 fs-4" id="weekd" style="border-right: 2px solid white;"></div>
+         <div id="todayd" class="px-2 fs-4"></div>
+      </div>
+
+      <div class="text-center" style="box-shadow: 0px 0px 11px 3px rgba(34, 60, 80, 0.2); border-radius: 5px;">
+         <div class="row align-items-center fs-5 m-0 pt-3" style="width: 100%;">
+            <div class="col-1 bg-danger" style="border-right: 5px solid black;"></div>
+            <div class="col"><img src="img/time.png" width="25"> Время <hr></div>
+            <div class="col"><img src="img/discipline.png" width="30"> Дисциплина <hr></div>
+            <div class="col"><img src="img/location.png" width="30">Аудитория <hr></div>
+            <div class="col"><img src="img/teacher.png" width="40">Преподаватель <hr></div>
+         </div>
+         <div class="row align-items-center fs-5 m-0 py-3 rasp-cell" style="width: 100%;">
+            <div class="container">
+               <div id="schedule-container">
+
+               </div>
+
+            </div>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="modal fade" id="exampleModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+   <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+         <div class="modal-header">
+            <h1 class="modal-title fs-5" id="exampleModalLabel">Я не смогу прийти</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+         </div>
+         <form enctype="multipart/form-data" method="GET">
+            <div class="modal-body">
+               <p>Опишите причину, почему вы не можете прийти и прикрепите подтверждающие документы</p>
+               <input type="text" class="form-control" name="classID" id="classID" style="display: none;">
+               <div class="mb-3">
+                  <label for="message-text" class="col-form-label">Причина:</label>
+                  <textarea class="form-control" name="reason" id="message-text"></textarea>
+               </div>
+               <div class="mb-3">
+                  <label for="reasoning_docs" class="btn btn-secondary" id="reason-label">Выберите файлы</label>
+                  <input type="file" class="form-control" name="docs" id="reasoning_docs" multiple style="display: none;" accept="image/*, .doc, .docx, application/pdf">
+
+                  <div id="f-names">
+                     <br><!-- Здесь выводятся выбранные файлы -->
+                  </div>
+                  <span id="files-cancel" style="display: none;">Отмена выбора</span>
+               </div>
+            </div>
+            <div class="modal-footer">
+               <button type="submit" class="btn btn-primary">Отправить сообщение</button>
+            </div>
+         </form>
+      </div>
+   </div>
+</div>
+
+<script>
+fetch('/ads')
+       .then(response => response.text())
+       .then(data => {
+          document.getElementById('ads').innerHTML = data;
+       })
+       .catch(error => console.error('Error:', error));
+
+// Fetch student name and surname
+document.addEventListener('DOMContentLoaded', () => {
+   fetch('/current-user')
+           .then(response => response.json())
+           .then(data => {
+              document.getElementById('NS').innerText = `${data.surname} ${data.name}`;
+           })
+           .catch(error => console.error('Error:', error));
+});
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const weekDisplay = document.getElementById('weekDisplay');
+  const prevWeekButton = document.getElementById('prevWeek');
+  const nextWeekButton = document.getElementById('nextWeek');
+  const weekd = document.getElementById('weekd');
+  const todayd = document.getElementById('todayd');
+
+  let currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+
+  function getStartOfWeek(date) {
+     const day = date.getDay();
+     const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+     return new Date(date.setDate(diff));
+  }
+
+  function formatDate(date) {
+     const year = date.getFullYear();
+     const month = date.getMonth() + 1; // Months are zero-based
+     const day = date.getDate();
+     return `${year}-${month < 10 ? '0' : ''}${month}-${day < 10 ? '0' : ''}${day}`;
+  }
+
+  function formatDayMonth(date) {
+     const month = date.getMonth() + 1; // Months are zero-based
+     const day = date.getDate();
+     return `${day < 10 ? '0' : ''}${day}.${month < 10 ? '0' : ''}${month}`;
+  }
+
+  function printWeek(startOfWeek) {
+     const weekDays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+     let weekStr = "";
+     let currentDay = new Date(startOfWeek);
+     const today = new Date();
+     today.setHours(0, 0, 0, 0);
+
+     for (let day of weekDays) {
+        const isToday = currentDay.getTime() === today.getTime();
+        weekStr += `<span class="date ${isToday ? 'current-day' : ''}" data-date="${formatDate(currentDay)}">${day} ${formatDate(currentDay)}</span> `;
+        currentDay.setDate(currentDay.getDate() + 1);
+     }
+
+     weekDisplay.innerHTML = weekStr;
+
+     // Add click event listeners to each date
+     document.querySelectorAll('.date').forEach(dateElement => {
+        dateElement.addEventListener('click', (event) => {
+           const clickedDate = event.target.getAttribute('data-date');
+           const clickedDay = event.target.textContent.split(' ')[0]; // Get the day of the week
+           weekd.textContent = clickedDay; // Update the weekd element with the selected day
+           todayd.textContent = formatDayMonth(new Date(clickedDate)); // Update the todayd element with the selected date
+
+           fetch(`/schedule?date=${clickedDate}`)
+                   .then(response => response.text())
+                   .then(html => {
+                      document.getElementById('schedule-container').innerHTML = html;
+                   })
+                   .catch(error => console.error('Error:', error));
+        });
+     });
+  }
+
+  function updateWeek(offset) {
+     currentDate.setDate(currentDate.getDate() + offset * 7);
+     const startOfWeek = getStartOfWeek(new Date(currentDate));
+     printWeek(startOfWeek);
+  }
+
+  prevWeekButton.addEventListener('click', () => updateWeek(-1));
+  nextWeekButton.addEventListener('click', () => updateWeek(1));
+
+
+  // Initialize with the current week
+  updateWeek(0);
+
+  // Set the initial day of the week and date
+  const weekDays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+  weekd.textContent = weekDays[new Date().getDay() - 1];
+  todayd.textContent = formatDayMonth(new Date());
+
+  // Fetch the schedule for the current date
+  const today = formatDate(new Date());
+  fetch(`/schedule?date=${today}`)
+          .then(response => response.text())
+          .then(html => {
+             document.getElementById('schedule-container').innerHTML = html;
+          })
+          .catch(error => console.error('Error:', error));
+});
+</script>
+<script src="js/index.js"></script>
+<script src="bootstrap-5.3.3/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
